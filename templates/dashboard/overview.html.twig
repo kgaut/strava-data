@@ -1,0 +1,123 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard — Strava Data{% endblock %}
+
+{% block body %}
+    <div class="d-flex justify-content-between align-items-baseline mb-2">
+        <h1 class="h3 mb-0">Dashboard</h1>
+        <small class="text-body-secondary">
+            {% if athlete.lastSyncedAt %}Last sync: {{ athlete.lastSyncedAt|date('Y-m-d H:i') }} UTC{% else %}No sync yet{% endif %}
+        </small>
+    </div>
+
+    {{ include('dashboard/_filters.html.twig') }}
+
+    {% set t = totals %}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card"><div class="card-body">
+                <div class="text-body-secondary small">Activities</div>
+                <div class="fs-3">{{ t.count|number_format(0, '.', ' ') }}</div>
+            </div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card"><div class="card-body">
+                <div class="text-body-secondary small">Distance</div>
+                <div class="fs-3">{{ (t.distance_m / 1000)|number_format(1, '.', ' ') }} km</div>
+            </div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card"><div class="card-body">
+                <div class="text-body-secondary small">Moving time</div>
+                <div class="fs-3">{{ (t.moving_time_s / 3600)|number_format(1, '.', ' ') }} h</div>
+            </div></div>
+        </div>
+        <div class="col-md-3">
+            <div class="card"><div class="card-body">
+                <div class="text-body-secondary small">Elevation</div>
+                <div class="fs-3">{{ t.elevation_m|number_format(0, '.', ' ') }} m</div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-7">
+            <div class="card h-100"><div class="card-body">
+                <h2 class="h6">Distance per year (km)</h2>
+                <canvas id="chart-years" height="160"></canvas>
+            </div></div>
+        </div>
+        <div class="col-md-5">
+            <div class="card h-100"><div class="card-body">
+                <h2 class="h6">By sport type</h2>
+                <canvas id="chart-sports" height="160"></canvas>
+                <table class="table table-sm mt-3 mb-0">
+                    <thead><tr><th>Type</th><th class="text-end">Count</th><th class="text-end">km</th><th class="text-end">h</th></tr></thead>
+                    <tbody>
+                    {% for row in by_sport %}
+                        <tr>
+                            <td>{{ row.sport_type }}</td>
+                            <td class="text-end">{{ row.count }}</td>
+                            <td class="text-end">{{ (row.distance_m / 1000)|number_format(1, '.', ' ') }}</td>
+                            <td class="text-end">{{ (row.moving_time_s / 3600)|number_format(1, '.', ' ') }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="card mt-3"><div class="card-body">
+        <h2 class="h6">Monthly distance (km)</h2>
+        <canvas id="chart-months" height="80"></canvas>
+    </div></div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+    const years = {{ by_year|json_encode|raw }};
+    const sports = {{ by_sport|json_encode|raw }};
+    const months = {{ by_month|json_encode|raw }};
+
+    new Chart(document.getElementById('chart-years'), {
+        type: 'bar',
+        data: {
+            labels: years.map(r => r.year).reverse(),
+            datasets: [{
+                label: 'km',
+                data: years.map(r => +(r.distance_m / 1000).toFixed(1)).reverse(),
+                backgroundColor: '#fc4c02'
+            }]
+        },
+        options: {responsive: true, plugins: {legend: {display: false}}}
+    });
+
+    new Chart(document.getElementById('chart-sports'), {
+        type: 'doughnut',
+        data: {
+            labels: sports.map(r => r.sport_type),
+            datasets: [{
+                data: sports.map(r => +(r.distance_m / 1000).toFixed(1)),
+            }]
+        },
+        options: {responsive: true}
+    });
+
+    // Sort months ascending and render last 36 months max.
+    const monthsAsc = [...months].sort((a, b) => (a.year - b.year) || (a.month - b.month)).slice(-36);
+    new Chart(document.getElementById('chart-months'), {
+        type: 'bar',
+        data: {
+            labels: monthsAsc.map(r => `${r.year}-${String(r.month).padStart(2, '0')}`),
+            datasets: [{
+                label: 'km',
+                data: monthsAsc.map(r => +(r.distance_m / 1000).toFixed(1)),
+                backgroundColor: '#0d6efd'
+            }]
+        },
+        options: {responsive: true, plugins: {legend: {display: false}}}
+    });
+</script>
+{% endblock %}

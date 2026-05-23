@@ -1,0 +1,40 @@
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-md-2">
+        <label class="form-label small mb-1">Year</label>
+        <select name="year" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for y in years %}
+                <option value="{{ y }}" {{ filters.year == y ? 'selected' : '' }}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small mb-1">Month</label>
+        <select name="month" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for m in 1..12 %}
+                <option value="{{ m }}" {{ filters.month == m ? 'selected' : '' }}>{{ m|date('F', false) ?? ('0' ~ m)|date('F') }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label class="form-label small mb-1">Sport type</label>
+        <select name="sport_type" class="form-select form-select-sm">
+            <option value="">All</option>
+            {% for s in sport_types %}
+                <option value="{{ s }}" {{ filters.sportType == s ? 'selected' : '' }}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small mb-1">From</label>
+        <input type="date" name="from" value="{{ filters.from ? filters.from|date('Y-m-d') : '' }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small mb-1">To</label>
+        <input type="date" name="to" value="{{ filters.to ? filters.to|date('Y-m-d') : '' }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-1 d-grid">
+        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+    </div>
+</form>
