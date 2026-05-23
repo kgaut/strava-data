@@ -1,0 +1,28 @@
+parameters:
+    app.strava.owner_athlete_id: '%env(default::STRAVA_OWNER_ATHLETE_ID)%'
+    app.strava.client_id: '%env(STRAVA_CLIENT_ID)%'
+    app.strava.client_secret: '%env(STRAVA_CLIENT_SECRET)%'
+    app.map.osm_user_agent: '%env(OSM_TILE_USER_AGENT)%'
+    app.map.osm_tile_url: '%env(OSM_TILE_URL_TEMPLATE)%'
+    app.map.cache_dir: '%kernel.project_dir%/var/maps'
+    app.map.tile_cache_dir: '%kernel.project_dir%/var/tiles'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    App\Service\Map\Background\BackgroundRendererInterface:
+        alias: App\Service\Map\Background\TileBackgroundRenderer
+
+    # Bind common scalar arguments
+    _instanceof:
+        App\Service\Map\Background\BackgroundRendererInterface:
+            tags: ['app.map.background_renderer']
