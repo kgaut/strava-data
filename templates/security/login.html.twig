@@ -1,0 +1,21 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Sign in — Strava Data{% endblock %}
+
+{% block body %}
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body text-center p-5">
+                    <h1 class="h3 mb-3">Sign in</h1>
+                    <p class="text-body-secondary mb-4">
+                        This is a personal Strava dashboard. Authenticate with Strava to continue.
+                    </p>
+                    <a class="btn btn-warning btn-lg" href="{{ path('connect_strava_start') }}">
+                        Connect with Strava
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

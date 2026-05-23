@@ -11,6 +11,14 @@ services:
     _defaults:
         autowire: true
         autoconfigure: true
+        bind:
+            string $ownerAthleteId: '%app.strava.owner_athlete_id%'
+            string $stravaClientId: '%app.strava.client_id%'
+            string $stravaClientSecret: '%app.strava.client_secret%'
+            string $osmUserAgent: '%app.map.osm_user_agent%'
+            string $osmTileUrlTemplate: '%app.map.osm_tile_url%'
+            string $mapCacheDir: '%app.map.cache_dir%'
+            string $tileCacheDir: '%app.map.tile_cache_dir%'
 
     App\:
         resource: '../src/'
@@ -22,7 +30,6 @@ services:
     App\Service\Map\Background\BackgroundRendererInterface:
         alias: App\Service\Map\Background\TileBackgroundRenderer
 
-    # Bind common scalar arguments
     _instanceof:
         App\Service\Map\Background\BackgroundRendererInterface:
             tags: ['app.map.background_renderer']
