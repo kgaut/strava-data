@@ -61,6 +61,7 @@ class TileFetcher
         ]);
         if (200 !== $response->getStatusCode()) {
             $this->logger->warning('Tile fetch failed', ['url' => $url, 'status' => $response->getStatusCode()]);
+
             // Return a blank tile rather than aborting the whole render.
             return $this->blankTile();
         }

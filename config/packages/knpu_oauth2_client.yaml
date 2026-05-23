@@ -2,7 +2,7 @@ knpu_oauth2_client:
     clients:
         strava:
             type: generic
-            provider_class: Stevenmaguire\OAuth2\Client\Provider\Strava
+            provider_class: App\OAuth\StravaOAuthProvider
             client_id: '%app.strava.client_id%'
             client_secret: '%app.strava.client_secret%'
             redirect_route: connect_strava_check

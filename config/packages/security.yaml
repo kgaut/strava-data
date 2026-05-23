@@ -1,6 +1,4 @@
 security:
-    password_hashers: []
-
     providers:
         athlete_provider:
             entity:

@@ -3,6 +3,12 @@ doctrine:
         url: '%env(resolve:DATABASE_URL)%'
         use_savepoints: true
         profiling_collect_backtrace: '%kernel.debug%'
+        types:
+            geography:
+                class: Jsor\Doctrine\PostGIS\Types\GeographyType
+            geometry:
+                class: Jsor\Doctrine\PostGIS\Types\GeometryType
+        schema_filter: ~^(?!tiger|topology)~
     orm:
         auto_generate_proxy_classes: true
         enable_lazy_ghost_objects: true

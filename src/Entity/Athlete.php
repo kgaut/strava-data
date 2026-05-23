@@ -161,6 +161,10 @@ class Athlete implements UserInterface
 
     public function getUserIdentifier(): string
     {
+        if ('' === $this->id) {
+            throw new \LogicException('Athlete entity is missing its Strava ID.');
+        }
+
         return $this->id;
     }
 }

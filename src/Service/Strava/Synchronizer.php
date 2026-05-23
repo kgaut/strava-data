@@ -32,10 +32,10 @@ class Synchronizer
     /**
      * Synchronize activities for an athlete.
      *
-     * @param int|null            $afterTimestamp Unix timestamp; only activities after this time are fetched. Null = full history.
-     * @param callable|null       $onActivity     Optional callback called for every imported activity (id, name).
+     * @param int|null      $afterTimestamp Unix timestamp; only activities after this time are fetched. Null = full history.
+     * @param callable|null $onActivity     optional callback called for every imported activity (id, name)
      *
-     * @return int Number of new or updated activities written.
+     * @return int number of new or updated activities written
      */
     public function sync(Athlete $athlete, ?int $afterTimestamp = null, ?callable $onActivity = null): int
     {
@@ -64,13 +64,15 @@ class Synchronizer
             }
 
             $this->em->flush();
-            $this->em->clear(Activity::class);
+            $this->em->clear();
             $this->logger->info('Strava sync page processed', ['page' => $page, 'count' => count($batch)]);
 
             // Strava returns up to PAGE_SIZE; fewer means the last page.
             if (count($batch) < self::PAGE_SIZE) {
                 break;
             }
+            // Re-fetch the athlete after clear so the next iteration uses a managed reference.
+            $athlete = $this->athleteRepository->find($athlete->getId()) ?? $athlete;
             ++$page;
         }
 

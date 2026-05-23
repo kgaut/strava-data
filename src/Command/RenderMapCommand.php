@@ -69,7 +69,7 @@ final class RenderMapCommand extends Command
             height: $h,
             from: $input->getOption('from') ? new \DateTimeImmutable((string) $input->getOption('from')) : null,
             to: $input->getOption('to') ? new \DateTimeImmutable($input->getOption('to').' 23:59:59') : null,
-            sportTypes: (array) $input->getOption('sport'),
+            sportTypes: array_values(array_map('strval', (array) $input->getOption('sport'))),
         );
 
         $io->writeln(sprintf(

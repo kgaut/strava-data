@@ -240,7 +240,7 @@ class ActivityRepository extends ServiceEntityRepository
             ->getQuery()
             ->getArrayResult();
 
-        return array_map(static fn (array $r): int => (int) $r['year'], $rows);
+        return array_values(array_map(static fn (array $r): int => (int) $r['year'], $rows));
     }
 
     /**
@@ -256,7 +256,7 @@ class ActivityRepository extends ServiceEntityRepository
             ->getQuery()
             ->getArrayResult();
 
-        return array_map(static fn (array $r): string => (string) $r['sport_type'], $rows);
+        return array_values(array_map(static fn (array $r): string => (string) $r['sport_type'], $rows));
     }
 
     /**
@@ -275,14 +275,14 @@ class ActivityRepository extends ServiceEntityRepository
         array $filters = [],
     ): array {
         $sql = <<<'SQL'
-            SELECT a.*
-            FROM activity a
-            WHERE a.athlete_id = :athlete_id
-              AND a.start_latlng IS NOT NULL
-              AND a.summary_polyline IS NOT NULL
-              AND a.summary_polyline <> ''
-              AND ST_DWithin(a.start_latlng, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radius)
-        SQL;
+                SELECT a.*
+                FROM activity a
+                WHERE a.athlete_id = :athlete_id
+                  AND a.start_latlng IS NOT NULL
+                  AND a.summary_polyline IS NOT NULL
+                  AND a.summary_polyline <> ''
+                  AND ST_DWithin(a.start_latlng, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radius)
+            SQL;
 
         $params = [
             'athlete_id' => $athlete->getId(),

@@ -93,7 +93,10 @@ class StravaAuthenticator extends OAuth2Authenticator
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
     {
-        $request->getSession()->getFlashBag()->add('danger', $exception->getMessage());
+        $session = $request->getSession();
+        if ($session instanceof \Symfony\Component\HttpFoundation\Session\Session) {
+            $session->getFlashBag()->add('danger', $exception->getMessage());
+        }
 
         return new RedirectResponse($this->urlGenerator->generate('app_login'));
     }

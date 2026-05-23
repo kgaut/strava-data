@@ -23,7 +23,7 @@ final class Projection
     {
         $latRad = deg2rad($lat);
 
-        return (1.0 - log(tan($latRad) + 1.0 / cos($latRad)) / M_PI) / 2.0 * (2 ** $zoom);
+        return (1.0 - log(tan($latRad) + 1.0 / cos($latRad)) / \M_PI) / 2.0 * (2 ** $zoom);
     }
 
     /**

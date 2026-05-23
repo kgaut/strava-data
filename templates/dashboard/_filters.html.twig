@@ -13,7 +13,7 @@
         <select name="month" class="form-select form-select-sm">
             <option value="">All</option>
             {% for m in 1..12 %}
-                <option value="{{ m }}" {{ filters.month == m ? 'selected' : '' }}>{{ m|date('F', false) ?? ('0' ~ m)|date('F') }}</option>
+                <option value="{{ m }}" {{ filters.month == m ? 'selected' : '' }}>{{ ('2000-' ~ ('%02d'|format(m)) ~ '-01')|date('F') }}</option>
             {% endfor %}
         </select>
     </div>

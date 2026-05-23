@@ -54,7 +54,7 @@ final class MapController extends AbstractController
     }
 
     #[Route('/map/render', name: 'app_map_render')]
-    public function render(Request $request): Response
+    public function renderImage(Request $request): Response
     {
         /** @var Athlete $athlete */
         $athlete = $this->getUser();
@@ -71,8 +71,10 @@ final class MapController extends AbstractController
 
     private function buildRequest(Request $r): MapRequest
     {
-        $sportTypes = $r->query->all('sport_types');
-        $sportTypes = is_array($sportTypes) ? array_values(array_filter(array_map('strval', $sportTypes), static fn (string $s): bool => '' !== $s)) : [];
+        $sportTypes = array_values(array_filter(
+            array_map('strval', $r->query->all('sport_types')),
+            static fn (string $s): bool => '' !== $s,
+        ));
 
         $from = $r->query->get('from');
         $to = $r->query->get('to');
@@ -81,7 +83,7 @@ final class MapController extends AbstractController
             centerLat: (float) ($r->query->get('center_lat') ?? 0),
             centerLng: (float) ($r->query->get('center_lng') ?? 0),
             radiusMeters: max(100.0, ((float) ($r->query->get('radius_km') ?? 10)) * 1000.0),
-            background: $r->query->get('background', MapRequest::BACKGROUND_TILES) === MapRequest::BACKGROUND_BLANK
+            background: MapRequest::BACKGROUND_BLANK === $r->query->get('background', MapRequest::BACKGROUND_TILES)
                 ? MapRequest::BACKGROUND_BLANK
                 : MapRequest::BACKGROUND_TILES,
             backgroundColor: (string) $r->query->get('background_color', '#000000'),

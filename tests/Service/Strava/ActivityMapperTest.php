@@ -57,8 +57,9 @@ final class ActivityMapperTest extends TestCase
         self::assertTrue($activity->hasHeartrate());
         self::assertSame(7, $activity->getKudosCount());
         self::assertNotNull($activity->getSummaryPolyline());
-        self::assertNotNull($activity->getStartLatlng());
-        self::assertStringContainsString('POINT', $activity->getStartLatlng() ?? '');
+        $startLatlng = $activity->getStartLatlng();
+        self::assertNotNull($startLatlng);
+        self::assertStringContainsString('POINT', $startLatlng);
     }
 
     public function testEmptyLatlngIsTreatedAsNull(): void

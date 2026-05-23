@@ -13,8 +13,8 @@ final class MapRequest
     public const BACKGROUND_BLANK = 'blank';
 
     /**
-     * @param self::BACKGROUND_*    $background
-     * @param list<string>          $sportTypes
+     * @param self::BACKGROUND_* $background
+     * @param list<string>       $sportTypes
      */
     public function __construct(
         public readonly float $centerLat,

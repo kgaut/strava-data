@@ -12,7 +12,7 @@ namespace App\Service\Map;
 final class PolylineDecoder
 {
     /**
-     * @return list<array{0: float, 1: float}> List of [lat, lng] pairs.
+     * @return list<array{0: float, 1: float}> list of [lat, lng] pairs
      */
     public function decode(string $encoded, int $precision = 5): array
     {
