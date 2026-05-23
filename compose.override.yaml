@@ -1,0 +1,29 @@
+# Local development overrides — used automatically when running `docker compose`
+# in the project directory. Builds the dev target with source mounted.
+
+services:
+  app:
+    build:
+      target: dev
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: "1"
+    volumes:
+      - .:/var/www/html
+      - app_var:/var/www/html/var
+
+  cron:
+    build:
+      target: dev
+    volumes:
+      - .:/var/www/html
+      - app_var:/var/www/html/var
+      - ./docker/cron/crontab:/etc/cron.d/strava-sync:ro
+
+  db:
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+
+  redis:
+    ports:
+      - "${REDIS_HOST_PORT:-6379}:6379"

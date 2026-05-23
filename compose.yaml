@@ -1,0 +1,89 @@
+name: strava-data
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+      target: prod
+    image: ghcr.io/kgaut/strava-data:dev
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-strava}:${POSTGRES_PASSWORD:-strava}@db:5432/${POSTGRES_DB:-strava}?serverVersion=16
+      MESSENGER_TRANSPORT_DSN: redis://redis:6379/messages
+      LOCK_DSN: redis://redis:6379
+      REDIS_URL: redis://redis:6379
+      STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID:?STRAVA_CLIENT_ID is required}
+      STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET:?STRAVA_CLIENT_SECRET is required}
+      STRAVA_OWNER_ATHLETE_ID: ${STRAVA_OWNER_ATHLETE_ID:-}
+      OSM_TILE_USER_AGENT: ${OSM_TILE_USER_AGENT:-strava-data/0.1}
+      OSM_TILE_URL_TEMPLATE: ${OSM_TILE_URL_TEMPLATE:-https://tile.openstreetmap.org/{z}/{x}/{y}.png}
+    volumes:
+      - app_var:/var/www/html/var
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-strava}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-strava}
+      POSTGRES_DB: ${POSTGRES_DB:-strava}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-strava} -d ${POSTGRES_DB:-strava}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redis_data:/data
+
+  cron:
+    image: ghcr.io/kgaut/strava-data:dev
+    build:
+      context: .
+      dockerfile: docker/app/Dockerfile
+      target: prod
+    restart: unless-stopped
+    entrypoint: ["/bin/bash", "/var/www/html/docker/cron/entrypoint.sh"]
+    environment:
+      APP_ENV: ${APP_ENV:-prod}
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-strava}:${POSTGRES_PASSWORD:-strava}@db:5432/${POSTGRES_DB:-strava}?serverVersion=16
+      REDIS_URL: redis://redis:6379
+      STRAVA_CLIENT_ID: ${STRAVA_CLIENT_ID}
+      STRAVA_CLIENT_SECRET: ${STRAVA_CLIENT_SECRET}
+      RUN_MIGRATIONS_ON_BOOT: "0"
+    volumes:
+      - app_var:/var/www/html/var
+      - ./docker/cron/crontab:/etc/cron.d/strava-sync:ro
+    depends_on:
+      app:
+        condition: service_started
+
+volumes:
+  db_data:
+  redis_data:
+  app_var:
