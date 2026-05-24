@@ -260,6 +260,66 @@ class ActivityRepository extends ServiceEntityRepository
     }
 
     /**
+     * Lightweight projection used by the interactive map viewer: only the
+     * fields needed to draw a polyline + popup, never the full entity.
+     *
+     * @param array{
+     *     year?: int|null,
+     *     sport_type?: string|null,
+     *     from?: \DateTimeImmutable|null,
+     *     to?: \DateTimeImmutable|null,
+     * } $filters
+     *
+     * @return list<array{id: string, name: string, sport_type: string, start_date: string, polyline: string}>
+     */
+    public function findPolylinesForViewer(Athlete $athlete, array $filters = []): array
+    {
+        $qb = $this->createQueryBuilder('a')
+            ->select('a.id, a.name, a.sportType AS sport_type, a.startDateLocal AS start_date, a.summaryPolyline AS polyline')
+            ->where('a.athlete = :athlete')
+            ->andWhere('a.summaryPolyline IS NOT NULL')
+            ->andWhere("a.summaryPolyline <> ''")
+            ->setParameter('athlete', $athlete)
+            ->orderBy('a.startDateLocal', 'DESC');
+
+        if (!empty($filters['year'])) {
+            $qb->andWhere('EXTRACT(YEAR FROM a.startDateLocal) = :year')
+                ->setParameter('year', $filters['year']);
+        }
+        if (!empty($filters['sport_type'])) {
+            $qb->andWhere('a.sportType = :sport')
+                ->setParameter('sport', $filters['sport_type']);
+        }
+        if (!empty($filters['from'])) {
+            $qb->andWhere('a.startDateLocal >= :from')
+                ->setParameter('from', $filters['from']);
+        }
+        if (!empty($filters['to'])) {
+            $qb->andWhere('a.startDateLocal <= :to')
+                ->setParameter('to', $filters['to']);
+        }
+
+        $rows = $qb->getQuery()->getArrayResult();
+
+        $out = [];
+        /** @var array<string, mixed> $row */
+        foreach ($rows as $row) {
+            $startDate = $row['start_date'];
+            $out[] = [
+                'id' => (string) $row['id'],
+                'name' => (string) $row['name'],
+                'sport_type' => (string) $row['sport_type'],
+                'start_date' => $startDate instanceof \DateTimeInterface
+                    ? $startDate->format('Y-m-d')
+                    : (string) $startDate,
+                'polyline' => (string) $row['polyline'],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * Find activities whose start point falls within a given radius (in meters)
      * of a center, with optional date / sport filters. Used by the map renderer.
      *

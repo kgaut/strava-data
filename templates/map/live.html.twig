@@ -1,0 +1,172 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Live map — Strava Data{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+    #map { height: calc(100vh - 220px); min-height: 480px; border-radius: 8px; }
+    .map-toolbar { gap: .5rem; }
+    .map-toolbar select, .map-toolbar input { min-width: 9rem; }
+    .activity-count { font-variant-numeric: tabular-nums; }
+</style>
+{% endblock %}
+
+{% block body %}
+    <div class="d-flex justify-content-between align-items-baseline mb-3">
+        <h1 class="h3 mb-0">Live map</h1>
+        <span class="text-body-secondary small">
+            <span id="status">Loading…</span>
+            <span class="ms-2">·</span>
+            <span class="ms-2">Tiles © OpenStreetMap contributors</span>
+        </span>
+    </div>
+
+    <form id="filters" class="row map-toolbar align-items-end mb-3">
+        <div class="col-auto">
+            <label class="form-label small mb-1">Year</label>
+            <select name="year" class="form-select form-select-sm">
+                <option value="">All</option>
+                {% for y in years %}
+                    <option value="{{ y }}">{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">Sport type</label>
+            <select name="sport_type" class="form-select form-select-sm">
+                <option value="">All</option>
+                {% for s in sport_types %}
+                    <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">From</label>
+            <input type="date" name="from" class="form-control form-control-sm">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">To</label>
+            <input type="date" name="to" class="form-control form-control-sm">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">Trace colour</label>
+            <input type="color" name="color" value="#fc4c02" class="form-control form-control-color form-control-sm">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">Opacity</label>
+            <input type="number" name="opacity" min="0.1" max="1" step="0.05" value="0.55" class="form-control form-control-sm" style="width: 5rem">
+        </div>
+        <div class="col-auto">
+            <label class="form-label small mb-1">Width</label>
+            <input type="number" name="weight" min="1" max="10" step="1" value="2" class="form-control form-control-sm" style="width: 5rem">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-sm btn-primary">Apply</button>
+        </div>
+        <div class="col-auto ms-auto text-body-secondary small">
+            <span class="activity-count" id="count">0</span> activities
+        </div>
+    </form>
+
+    <div id="map"></div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+    // Google encoded-polyline decoder (signed varints, factor = 1e5).
+    function decodePolyline(str, precision) {
+        precision = precision || 5;
+        const factor = Math.pow(10, precision);
+        let index = 0, lat = 0, lng = 0;
+        const coords = [];
+        while (index < str.length) {
+            let b, shift = 0, result = 0;
+            do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+            lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+            shift = 0; result = 0;
+            do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+            lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+            coords.push([lat / factor, lng / factor]);
+        }
+        return coords;
+    }
+
+    const map = L.map('map', {preferCanvas: true}).setView([46.6, 2.5], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 19,
+    }).addTo(map);
+
+    const tracesLayer = L.layerGroup().addTo(map);
+    const status = document.getElementById('status');
+    const countEl = document.getElementById('count');
+    const form = document.getElementById('filters');
+
+    async function loadActivities() {
+        const params = new URLSearchParams();
+        const data = new FormData(form);
+        for (const [k, v] of data.entries()) {
+            if (v !== '' && !['color', 'opacity', 'weight'].includes(k)) {
+                params.set(k, v);
+            }
+        }
+
+        status.textContent = 'Loading…';
+        tracesLayer.clearLayers();
+
+        const t0 = performance.now();
+        let activities;
+        try {
+            const res = await fetch('{{ path('app_map_live_activities') }}?' + params.toString(), {
+                headers: {'Accept': 'application/json'},
+            });
+            if (!res.ok) { throw new Error('HTTP ' + res.status); }
+            activities = await res.json();
+        } catch (e) {
+            status.textContent = 'Error: ' + e.message;
+            countEl.textContent = '0';
+            return;
+        }
+
+        const color = form.elements['color'].value;
+        const opacity = parseFloat(form.elements['opacity'].value) || 0.55;
+        const weight = parseInt(form.elements['weight'].value, 10) || 2;
+
+        const bounds = L.latLngBounds([]);
+        let drawn = 0;
+        for (const a of activities) {
+            const pts = decodePolyline(a.polyline);
+            if (pts.length < 2) { continue; }
+            const line = L.polyline(pts, {color, opacity, weight, lineCap: 'round', lineJoin: 'round'});
+            line.bindTooltip(`<strong>${a.name}</strong><br>${a.sport_type} · ${a.start_date}`, {sticky: true});
+            line.addTo(tracesLayer);
+            pts.forEach(p => bounds.extend(p));
+            drawn++;
+        }
+        countEl.textContent = drawn;
+
+        if (drawn > 0 && bounds.isValid()) {
+            map.fitBounds(bounds, {padding: [20, 20]});
+        }
+        const ms = Math.round(performance.now() - t0);
+        status.textContent = `${activities.length} activities loaded in ${ms} ms`;
+    }
+
+    form.addEventListener('submit', (e) => { e.preventDefault(); loadActivities(); });
+    // Restyle existing traces when only visual options change.
+    ['color', 'opacity', 'weight'].forEach(name => {
+        form.elements[name].addEventListener('change', () => {
+            const color = form.elements['color'].value;
+            const opacity = parseFloat(form.elements['opacity'].value) || 0.55;
+            const weight = parseInt(form.elements['weight'].value, 10) || 2;
+            tracesLayer.eachLayer(l => l.setStyle({color, opacity, weight}));
+        });
+    });
+
+    loadActivities();
+</script>
+{% endblock %}
