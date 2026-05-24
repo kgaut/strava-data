@@ -4,32 +4,33 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\Athlete;
 use App\Service\Map\MapRenderer;
 use App\Service\Map\MapRequest;
 use App\Service\Stats\StatsService;
+use App\Service\Strava\AthleteProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[IsGranted('ROLE_USER')]
 final class MapController extends AbstractController
 {
     public function __construct(
         private readonly MapRenderer $renderer,
         private readonly StatsService $stats,
+        private readonly AthleteProvider $athleteProvider,
     ) {
     }
 
     #[Route('/map', name: 'app_map_form')]
     public function form(Request $request): Response
     {
-        /** @var Athlete $athlete */
-        $athlete = $this->getUser();
+        $athlete = $this->athleteProvider->find();
+        if (null === $athlete) {
+            return $this->render('dashboard/empty.html.twig');
+        }
 
         $defaults = [
             'center_lat' => $request->query->get('center_lat', '48.8566'),
@@ -56,8 +57,11 @@ final class MapController extends AbstractController
     #[Route('/map/render', name: 'app_map_render')]
     public function renderImage(Request $request): Response
     {
-        /** @var Athlete $athlete */
-        $athlete = $this->getUser();
+        $athlete = $this->athleteProvider->find();
+        if (null === $athlete) {
+            throw $this->createNotFoundException('No athlete in DB yet — run app:strava:sync first.');
+        }
+
         $mapRequest = $this->buildRequest($request);
         $result = $this->renderer->render($athlete, $mapRequest);
 

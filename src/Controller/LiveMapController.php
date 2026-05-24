@@ -4,30 +4,31 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\Athlete;
 use App\Repository\ActivityRepository;
 use App\Service\Stats\StatsService;
+use App\Service\Strava\AthleteProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[IsGranted('ROLE_USER')]
 final class LiveMapController extends AbstractController
 {
     public function __construct(
         private readonly ActivityRepository $activityRepository,
         private readonly StatsService $stats,
+        private readonly AthleteProvider $athleteProvider,
     ) {
     }
 
     #[Route('/map/live', name: 'app_map_live')]
     public function index(): Response
     {
-        /** @var Athlete $athlete */
-        $athlete = $this->getUser();
+        $athlete = $this->athleteProvider->find();
+        if (null === $athlete) {
+            return $this->render('dashboard/empty.html.twig');
+        }
 
         return $this->render('map/live.html.twig', [
             'years' => $this->stats->years($athlete),
@@ -38,10 +39,12 @@ final class LiveMapController extends AbstractController
     #[Route('/map/live/activities.json', name: 'app_map_live_activities')]
     public function activities(Request $request): JsonResponse
     {
-        /** @var Athlete $athlete */
-        $athlete = $this->getUser();
-        $filters = $this->readFilters($request);
+        $athlete = $this->athleteProvider->find();
+        if (null === $athlete) {
+            return new JsonResponse([]);
+        }
 
+        $filters = $this->readFilters($request);
         $rows = $this->activityRepository->findPolylinesForViewer($athlete, $filters);
 
         $response = new JsonResponse($rows);

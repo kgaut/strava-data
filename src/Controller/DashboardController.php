@@ -4,27 +4,30 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
-use App\Entity\Athlete;
 use App\Service\Stats\Filters;
 use App\Service\Stats\StatsService;
+use App\Service\Strava\AthleteProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
 
-#[IsGranted('ROLE_USER')]
 final class DashboardController extends AbstractController
 {
-    public function __construct(private readonly StatsService $stats)
-    {
+    public function __construct(
+        private readonly StatsService $stats,
+        private readonly AthleteProvider $athleteProvider,
+    ) {
     }
 
     #[Route('/dashboard', name: 'app_dashboard')]
     public function index(Request $request): Response
     {
-        /** @var Athlete $athlete */
-        $athlete = $this->getUser();
+        $athlete = $this->athleteProvider->find();
+        if (null === $athlete) {
+            return $this->render('dashboard/empty.html.twig');
+        }
+
         $filters = Filters::fromRequest($request);
         $data = $this->stats->overview($athlete, $filters);
 

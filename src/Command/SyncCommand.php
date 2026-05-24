@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Repository\AthleteRepository;
+use App\Service\Strava\AthleteProvider;
 use App\Service\Strava\Synchronizer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -16,7 +16,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 final class SyncCommand extends Command
 {
     public function __construct(
-        private readonly AthleteRepository $athleteRepository,
+        private readonly AthleteProvider $athleteProvider,
         private readonly Synchronizer $synchronizer,
     ) {
         parent::__construct();
@@ -25,12 +25,7 @@ final class SyncCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $athlete = $this->athleteRepository->findFirst();
-        if (null === $athlete) {
-            $io->error('No athlete connected. Log in via the web UI first.');
-
-            return Command::FAILURE;
-        }
+        $athlete = $this->athleteProvider->getOrBootstrap();
 
         $io->title(sprintf('Incremental sync for %s %s', $athlete->getFirstName(), $athlete->getLastName()));
         $count = $this->synchronizer->syncIncremental(

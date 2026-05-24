@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Repository\AthleteRepository;
 use App\Service\Map\MapRenderer;
 use App\Service\Map\MapRequest;
+use App\Service\Strava\AthleteProvider;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -19,7 +19,7 @@ use Symfony\Component\Filesystem\Filesystem;
 final class RenderMapCommand extends Command
 {
     public function __construct(
-        private readonly AthleteRepository $athleteRepository,
+        private readonly AthleteProvider $athleteProvider,
         private readonly MapRenderer $renderer,
         private readonly Filesystem $filesystem,
     ) {
@@ -46,9 +46,9 @@ final class RenderMapCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $athlete = $this->athleteRepository->findFirst();
+        $athlete = $this->athleteProvider->find();
         if (null === $athlete) {
-            $io->error('No athlete connected.');
+            $io->error('No athlete in DB yet — run app:strava:sync first.');
 
             return Command::FAILURE;
         }
@@ -83,7 +83,6 @@ final class RenderMapCommand extends Command
 
         $result = $this->renderer->render($athlete, $req);
 
-        // The renderer caches by fingerprint; copy the cached file to the requested output path.
         $out = (string) $input->getOption('out');
         $this->filesystem->copy($result['path'], $out, true);
 

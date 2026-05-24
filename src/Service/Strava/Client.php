@@ -4,35 +4,30 @@ declare(strict_types=1);
 
 namespace App\Service\Strava;
 
-use App\Entity\Athlete;
-use App\Repository\AthleteRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpClient\Exception\ClientException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Thin HTTP wrapper around the Strava REST API.
- * Refreshes the access token automatically when it is about to expire,
- * and surfaces rate-limit headers via the LoggerInterface for observability.
+ * Pulls a fresh access token from TokenManager (cached in Redis) and
+ * logs rate-limit headers for observability.
  */
 class Client
 {
     private const API_BASE = 'https://www.strava.com/api/v3';
-    private const TOKEN_URL = 'https://www.strava.com/oauth/token';
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
-        private readonly AthleteRepository $athleteRepository,
+        private readonly TokenManager $tokenManager,
         private readonly LoggerInterface $logger,
-        private readonly string $stravaClientId,
-        private readonly string $stravaClientSecret,
     ) {
     }
 
     /**
      * @return list<array<string, mixed>>
      */
-    public function listActivities(Athlete $athlete, ?int $afterTimestamp = null, int $page = 1, int $perPage = 200): array
+    public function listActivities(?int $afterTimestamp = null, int $page = 1, int $perPage = 200): array
     {
         $params = ['page' => $page, 'per_page' => $perPage];
         if (null !== $afterTimestamp) {
@@ -40,7 +35,7 @@ class Client
         }
 
         /** @var list<array<string, mixed>> $data */
-        $data = $this->request($athlete, 'GET', '/athlete/activities', ['query' => $params]);
+        $data = $this->request('GET', '/athlete/activities', ['query' => $params]);
 
         return $data;
     }
@@ -48,10 +43,10 @@ class Client
     /**
      * @return array<string, mixed>
      */
-    public function getActivity(Athlete $athlete, string $activityId): array
+    public function getActivity(string $activityId): array
     {
         /** @var array<string, mixed> $data */
-        $data = $this->request($athlete, 'GET', "/activities/{$activityId}", ['query' => ['include_all_efforts' => 'false']]);
+        $data = $this->request('GET', "/activities/{$activityId}", ['query' => ['include_all_efforts' => 'false']]);
 
         return $data;
     }
@@ -59,10 +54,10 @@ class Client
     /**
      * @return array<string, mixed>
      */
-    public function getAthlete(Athlete $athlete): array
+    public function getAthlete(): array
     {
         /** @var array<string, mixed> $data */
-        $data = $this->request($athlete, 'GET', '/athlete');
+        $data = $this->request('GET', '/athlete');
 
         return $data;
     }
@@ -72,11 +67,9 @@ class Client
      *
      * @return array<int|string, mixed>
      */
-    private function request(Athlete $athlete, string $method, string $path, array $options = []): array
+    private function request(string $method, string $path, array $options = []): array
     {
-        $this->ensureFreshToken($athlete);
-
-        $options['auth_bearer'] = $athlete->getAccessToken();
+        $options['auth_bearer'] = $this->tokenManager->accessToken();
 
         try {
             $response = $this->httpClient->request($method, self::API_BASE.$path, $options);
@@ -94,36 +87,6 @@ class Client
         } catch (ClientException $e) {
             throw new StravaApiException('Strava API request failed: '.$e->getMessage(), 0, $e);
         }
-    }
-
-    private function ensureFreshToken(Athlete $athlete): void
-    {
-        if (!$athlete->isTokenExpired()) {
-            return;
-        }
-
-        $response = $this->httpClient->request('POST', self::TOKEN_URL, [
-            'body' => [
-                'client_id' => $this->stravaClientId,
-                'client_secret' => $this->stravaClientSecret,
-                'grant_type' => 'refresh_token',
-                'refresh_token' => $athlete->getRefreshToken(),
-            ],
-        ]);
-
-        if (200 !== $response->getStatusCode()) {
-            throw new StravaApiException('Failed to refresh Strava token: HTTP '.$response->getStatusCode().' '.$response->getContent(false));
-        }
-
-        /** @var array{access_token: string, refresh_token: string, expires_at: int} $data */
-        $data = $response->toArray();
-
-        $athlete->updateTokens(
-            $data['access_token'],
-            $data['refresh_token'],
-            (new \DateTimeImmutable())->setTimestamp($data['expires_at']),
-        );
-        $this->athleteRepository->save($athlete, true);
     }
 
     /** @param array<string, array<int, string>> $headers */

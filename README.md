@@ -3,14 +3,16 @@
 Personal Strava dashboard and map renderer, designed to run as a Docker Compose
 stack on a home server.
 
-- Single-user OAuth login with Strava
+- **No web auth** — the app is meant to live behind your reverse proxy / VPN.
+  Strava API access uses a long-lived refresh token configured once in `.env`.
 - CLI commands sync activities into a local PostgreSQL/PostGIS database
 - Web dashboard with totals, year/month/sport breakdowns, and global filters
   (year, month, sport type, date range)
-- Map renderer that overlays all matching activity polylines on a PNG, with
-  two background modes: **OSM tiles** or **plain colour (no tiles)**
-- Filters for the map: center + radius, date range, sport types, colour,
-  opacity, trace width, image size
+- Interactive Leaflet map (`/map/live`) with all activity traces overlaid on OSM
+- PNG renderer (`/map` and CLI) that overlays all matching activity polylines,
+  with two background modes: **OSM tiles** or **plain colour (no tiles)**
+- Filters for the PNG renderer: center + radius, date range, sport types,
+  colour, opacity, trace width, image size
 
 ## Stack
 
@@ -27,25 +29,55 @@ mounts the source tree and switches to the `dev` target for local hacking.
 
 ## Quick start
 
-1. **Create a Strava API application** at <https://www.strava.com/settings/api>.
-   - Authorization Callback Domain: the public hostname of your deployment
-     (e.g. `strava.mydomain.tld`), or `localhost` for local dev.
-2. Copy and edit the local env file:
-   ```bash
-   cp .env .env.local
-   # Then set STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, APP_SECRET, etc.
-   ```
-3. Boot the stack:
-   ```bash
-   docker compose up -d --build
-   ```
-4. Visit `http://localhost:8080` and click **Connect with Strava**.
-5. Trigger the initial backfill:
-   ```bash
-   docker compose exec app php bin/console app:strava:full-sync -v
-   ```
-   The hourly cron sidecar keeps things up to date afterwards (or run
-   `app:strava:sync` manually).
+### 1. Create a Strava API application
+
+At <https://www.strava.com/settings/api>:
+- Authorization Callback Domain: `localhost` (the value is required even
+  though we won't go through web OAuth on the server)
+- Note your **Client ID** and **Client Secret**
+
+### 2. Mint a long-lived refresh token (one-shot)
+
+Strava requires the athlete to consent once. Do it manually:
+
+```bash
+# 1. Open this URL in your browser (replace CLIENT_ID):
+#    https://www.strava.com/oauth/authorize?client_id=CLIENT_ID&redirect_uri=http://localhost&response_type=code&scope=read,activity:read_all,profile:read_all
+#
+# 2. After clicking "Authorize" Strava redirects to http://localhost/?state=&code=CODE&scope=...
+#    Copy the `code` value from the URL.
+#
+# 3. Exchange the code for a refresh_token (replace CLIENT_ID, CLIENT_SECRET, CODE):
+curl -X POST https://www.strava.com/oauth/token \
+    -d client_id=CLIENT_ID \
+    -d client_secret=CLIENT_SECRET \
+    -d code=CODE \
+    -d grant_type=authorization_code
+```
+
+The response contains `"refresh_token": "..."`. Save that string —
+it doesn't expire unless you revoke the authorization in Strava settings.
+
+### 3. Configure the app
+
+```bash
+cp .env .env.local
+# Edit .env.local and set:
+#   APP_SECRET=<random 32+ chars>
+#   STRAVA_CLIENT_ID=<from step 1>
+#   STRAVA_CLIENT_SECRET=<from step 1>
+#   STRAVA_REFRESH_TOKEN=<from step 2>
+```
+
+### 4. Boot the stack and sync
+
+```bash
+docker compose up -d --build
+docker compose exec app php bin/console app:strava:full-sync -v
+```
+
+That's it — visit `http://localhost:8080`. No login screen. The hourly
+cron sidecar keeps activities up to date afterwards.
 
 ## CLI
 

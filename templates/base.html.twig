@@ -13,19 +13,9 @@
             <a class="navbar-brand" href="{{ path('app_home') }}">strava-data</a>
             <div class="collapse navbar-collapse">
                 <ul class="navbar-nav me-auto">
-                    {% if app.user %}
-                        <li class="nav-item"><a class="nav-link" href="{{ path('app_dashboard') }}">Dashboard</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ path('app_map_live') }}">Live map</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ path('app_map_form') }}">PNG render</a></li>
-                    {% endif %}
-                </ul>
-                <ul class="navbar-nav">
-                    {% if app.user %}
-                        <li class="nav-item"><span class="navbar-text me-3">{{ app.user.firstName }} {{ app.user.lastName }}</span></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ path('app_logout') }}">Logout</a></li>
-                    {% else %}
-                        <li class="nav-item"><a class="nav-link" href="{{ path('app_login') }}">Login with Strava</a></li>
-                    {% endif %}
+                    <li class="nav-item"><a class="nav-link" href="{{ path('app_dashboard') }}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ path('app_map_live') }}">Live map</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{{ path('app_map_form') }}">PNG render</a></li>
                 </ul>
             </div>
         </div>

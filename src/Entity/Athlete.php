@@ -9,11 +9,14 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Security\Core\User\UserInterface;
 
+/**
+ * Strava athlete metadata. Tokens are NOT stored here — authentication
+ * uses a single long-lived refresh token from STRAVA_REFRESH_TOKEN.
+ */
 #[ORM\Entity(repositoryClass: AthleteRepository::class)]
 #[ORM\Table(name: 'athlete')]
-class Athlete implements UserInterface
+class Athlete
 {
     #[ORM\Id]
     #[ORM\Column(type: Types::BIGINT)]
@@ -27,15 +30,6 @@ class Athlete implements UserInterface
 
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $profilePictureUrl = null;
-
-    #[ORM\Column(type: Types::TEXT)]
-    private string $accessToken = '';
-
-    #[ORM\Column(type: Types::TEXT)]
-    private string $refreshToken = '';
-
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private \DateTimeImmutable $tokenExpiresAt;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
@@ -57,7 +51,6 @@ class Athlete implements UserInterface
         $now = new \DateTimeImmutable();
         $this->createdAt = $now;
         $this->updatedAt = $now;
-        $this->tokenExpiresAt = $now;
     }
 
     public function getId(): string
@@ -73,6 +66,7 @@ class Athlete implements UserInterface
     public function setFirstName(string $firstName): self
     {
         $this->firstName = $firstName;
+        $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
     }
@@ -85,6 +79,7 @@ class Athlete implements UserInterface
     public function setLastName(string $lastName): self
     {
         $this->lastName = $lastName;
+        $this->updatedAt = new \DateTimeImmutable();
 
         return $this;
     }
@@ -99,36 +94,6 @@ class Athlete implements UserInterface
         $this->profilePictureUrl = $url;
 
         return $this;
-    }
-
-    public function getAccessToken(): string
-    {
-        return $this->accessToken;
-    }
-
-    public function getRefreshToken(): string
-    {
-        return $this->refreshToken;
-    }
-
-    public function getTokenExpiresAt(): \DateTimeImmutable
-    {
-        return $this->tokenExpiresAt;
-    }
-
-    public function updateTokens(string $accessToken, string $refreshToken, \DateTimeImmutable $expiresAt): self
-    {
-        $this->accessToken = $accessToken;
-        $this->refreshToken = $refreshToken;
-        $this->tokenExpiresAt = $expiresAt;
-        $this->updatedAt = new \DateTimeImmutable();
-
-        return $this;
-    }
-
-    public function isTokenExpired(): bool
-    {
-        return $this->tokenExpiresAt <= new \DateTimeImmutable('+1 minute');
     }
 
     public function getLastSyncedAt(): ?\DateTimeImmutable
@@ -147,24 +112,5 @@ class Athlete implements UserInterface
     public function getActivities(): Collection
     {
         return $this->activities;
-    }
-
-    public function getRoles(): array
-    {
-        return ['ROLE_USER'];
-    }
-
-    public function eraseCredentials(): void
-    {
-        // tokens stay in db; nothing to erase from memory
-    }
-
-    public function getUserIdentifier(): string
-    {
-        if ('' === $this->id) {
-            throw new \LogicException('Athlete entity is missing its Strava ID.');
-        }
-
-        return $this->id;
     }
 }

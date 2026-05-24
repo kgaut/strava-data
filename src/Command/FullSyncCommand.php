@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
-use App\Repository\AthleteRepository;
+use App\Service\Strava\AthleteProvider;
 use App\Service\Strava\Synchronizer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -12,11 +12,11 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'app:strava:full-sync', description: 'Pull the entire Strava activity history for the connected athlete.')]
+#[AsCommand(name: 'app:strava:full-sync', description: 'Pull the entire Strava activity history.')]
 final class FullSyncCommand extends Command
 {
     public function __construct(
-        private readonly AthleteRepository $athleteRepository,
+        private readonly AthleteProvider $athleteProvider,
         private readonly Synchronizer $synchronizer,
     ) {
         parent::__construct();
@@ -25,12 +25,7 @@ final class FullSyncCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $athlete = $this->athleteRepository->findFirst();
-        if (null === $athlete) {
-            $io->error('No athlete connected. Log in via the web UI first.');
-
-            return Command::FAILURE;
-        }
+        $athlete = $this->athleteProvider->getOrBootstrap();
 
         $io->title(sprintf('Full sync for %s %s', $athlete->getFirstName(), $athlete->getLastName()));
         $count = $this->synchronizer->sync(

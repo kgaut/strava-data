@@ -1,7 +1,7 @@
 parameters:
-    app.strava.owner_athlete_id: '%env(default::STRAVA_OWNER_ATHLETE_ID)%'
     app.strava.client_id: '%env(STRAVA_CLIENT_ID)%'
     app.strava.client_secret: '%env(STRAVA_CLIENT_SECRET)%'
+    app.strava.refresh_token: '%env(STRAVA_REFRESH_TOKEN)%'
     app.map.osm_user_agent: '%env(OSM_TILE_USER_AGENT)%'
     app.map.osm_tile_url: '%env(OSM_TILE_URL_TEMPLATE)%'
     app.map.cache_dir: '%kernel.project_dir%/var/maps'
@@ -12,9 +12,9 @@ services:
         autowire: true
         autoconfigure: true
         bind:
-            string $ownerAthleteId: '%app.strava.owner_athlete_id%'
             string $stravaClientId: '%app.strava.client_id%'
             string $stravaClientSecret: '%app.strava.client_secret%'
+            string $stravaRefreshToken: '%app.strava.refresh_token%'
             string $osmUserAgent: '%app.map.osm_user_agent%'
             string $osmTileUrlTemplate: '%app.map.osm_tile_url%'
             string $mapCacheDir: '%app.map.cache_dir%'

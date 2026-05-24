@@ -30,7 +30,7 @@ class Synchronizer
     }
 
     /**
-     * Synchronize activities for an athlete.
+     * Synchronize activities for the configured athlete.
      *
      * @param int|null      $afterTimestamp Unix timestamp; only activities after this time are fetched. Null = full history.
      * @param callable|null $onActivity     optional callback called for every imported activity (id, name)
@@ -43,7 +43,7 @@ class Synchronizer
         $written = 0;
 
         while (true) {
-            $batch = $this->client->listActivities($athlete, $afterTimestamp, $page, self::PAGE_SIZE);
+            $batch = $this->client->listActivities($afterTimestamp, $page, self::PAGE_SIZE);
             if ([] === $batch) {
                 break;
             }
@@ -67,11 +67,9 @@ class Synchronizer
             $this->em->clear();
             $this->logger->info('Strava sync page processed', ['page' => $page, 'count' => count($batch)]);
 
-            // Strava returns up to PAGE_SIZE; fewer means the last page.
             if (count($batch) < self::PAGE_SIZE) {
                 break;
             }
-            // Re-fetch the athlete after clear so the next iteration uses a managed reference.
             $athlete = $this->athleteRepository->find($athlete->getId()) ?? $athlete;
             ++$page;
         }
@@ -86,7 +84,6 @@ class Synchronizer
     public function syncIncremental(Athlete $athlete, ?callable $onActivity = null): int
     {
         $latest = $this->activityRepository->findLatestStartDate($athlete);
-        // Strava's `after` param is exclusive — subtract 1s to avoid missing the latest known activity.
         $after = null !== $latest ? $latest->getTimestamp() - 1 : null;
 
         return $this->sync($athlete, $after, $onActivity);
