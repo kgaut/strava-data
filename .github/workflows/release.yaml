@@ -24,6 +24,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Read PHP version
+        id: php
+        run: echo "version=$(cat .php-version)" >> "$GITHUB_OUTPUT"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
@@ -56,6 +60,8 @@ jobs:
           target: prod
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            PHP_VERSION=${{ steps.php.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

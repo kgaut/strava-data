@@ -23,10 +23,30 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Read PHP version
+        id: php
+        run: echo "version=$(cat .php-version)" >> "$GITHUB_OUTPUT"
+
+      - name: Verify PHP version consistency
+        run: |
+          set -e
+          PHP="${{ steps.php.outputs.version }}"
+          COMPOSER_PLATFORM=$(grep -A1 '"platform"' composer.json | grep '"php"' | sed -E 's/.*"php"[[:space:]]*:[[:space:]]*"([0-9]+\.[0-9]+).*/\1/')
+          DOCKERFILE_DEFAULT=$(grep '^ARG PHP_VERSION=' docker/app/Dockerfile | cut -d= -f2)
+          if [ "$PHP" != "$COMPOSER_PLATFORM" ]; then
+            echo "::error::.php-version ($PHP) and composer.json config.platform.php ($COMPOSER_PLATFORM) disagree"
+            exit 1
+          fi
+          if [ "$PHP" != "$DOCKERFILE_DEFAULT" ]; then
+            echo "::error::.php-version ($PHP) and docker/app/Dockerfile ARG PHP_VERSION ($DOCKERFILE_DEFAULT) disagree"
+            exit 1
+          fi
+          echo "PHP version is $PHP everywhere — OK."
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ steps.php.outputs.version }}
           extensions: intl, pdo_pgsql, pgsql, redis, imagick, zip, gd, bcmath, opcache
           coverage: none
           tools: composer:v2
@@ -87,10 +107,14 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Read PHP version
+        id: php
+        run: echo "version=$(cat .php-version)" >> "$GITHUB_OUTPUT"
+
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          php-version: ${{ steps.php.outputs.version }}
           extensions: intl, pdo_pgsql, pgsql, redis, imagick, zip, gd, bcmath, opcache
           coverage: none
           tools: composer:v2
