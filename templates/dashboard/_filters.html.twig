@@ -1,40 +1,74 @@
-<form method="get" class="row g-2 align-items-end mb-4">
-    <div class="col-md-2">
-        <label class="form-label small mb-1">Year</label>
-        <select name="year" class="form-select form-select-sm">
-            <option value="">All</option>
-            {% for y in years %}
-                <option value="{{ y }}" {{ filters.year == y ? 'selected' : '' }}>{{ y }}</option>
-            {% endfor %}
-        </select>
+{# Day-of-week labels indexed by Postgres EXTRACT(DOW): 0=Sun … 6=Sat. #}
+{% set dow_labels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] %}
+<form method="get" class="mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+            <label class="form-label small mb-1">Year</label>
+            <select name="year" class="form-select form-select-sm">
+                <option value="">All</option>
+                {% for y in years %}
+                    <option value="{{ y }}" {{ filters.year == y ? 'selected' : '' }}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small mb-1">Month</label>
+            <select name="month" class="form-select form-select-sm">
+                <option value="">All</option>
+                {% for m in 1..12 %}
+                    <option value="{{ m }}" {{ filters.month == m ? 'selected' : '' }}>{{ ('2000-' ~ ('%02d'|format(m)) ~ '-01')|date('F') }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Sport type</label>
+            <select name="sport_type" class="form-select form-select-sm">
+                <option value="">All</option>
+                {% for s in sport_types %}
+                    <option value="{{ s }}" {{ filters.sportType == s ? 'selected' : '' }}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small mb-1">From</label>
+            <input type="date" name="from" value="{{ filters.from ? filters.from|date('Y-m-d') : '' }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small mb-1">To</label>
+            <input type="date" name="to" value="{{ filters.to ? filters.to|date('Y-m-d') : '' }}" class="form-control form-control-sm">
+        </div>
+        <div class="col-md-1 d-grid">
+            <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+        </div>
     </div>
-    <div class="col-md-2">
-        <label class="form-label small mb-1">Month</label>
-        <select name="month" class="form-select form-select-sm">
-            <option value="">All</option>
-            {% for m in 1..12 %}
-                <option value="{{ m }}" {{ filters.month == m ? 'selected' : '' }}>{{ ('2000-' ~ ('%02d'|format(m)) ~ '-01')|date('F') }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-3">
-        <label class="form-label small mb-1">Sport type</label>
-        <select name="sport_type" class="form-select form-select-sm">
-            <option value="">All</option>
-            {% for s in sport_types %}
-                <option value="{{ s }}" {{ filters.sportType == s ? 'selected' : '' }}>{{ s }}</option>
-            {% endfor %}
-        </select>
-    </div>
-    <div class="col-md-2">
-        <label class="form-label small mb-1">From</label>
-        <input type="date" name="from" value="{{ filters.from ? filters.from|date('Y-m-d') : '' }}" class="form-control form-control-sm">
-    </div>
-    <div class="col-md-2">
-        <label class="form-label small mb-1">To</label>
-        <input type="date" name="to" value="{{ filters.to ? filters.to|date('Y-m-d') : '' }}" class="form-control form-control-sm">
-    </div>
-    <div class="col-md-1 d-grid">
-        <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+    <div class="row g-2 align-items-end mt-1">
+        <div class="col-md-6">
+            <label class="form-label small mb-1">Days of week</label>
+            <div class="btn-group btn-group-sm" role="group">
+                {% for i in 0..6 %}
+                    {% set idx = (i + 1) % 7 %} {# render Mon–Sun, mapping back to DOW values #}
+                    <input type="checkbox" class="btn-check" id="dow-{{ idx }}" name="day_of_week[]" value="{{ idx }}" {{ idx in filters.daysOfWeek ? 'checked' : '' }}>
+                    <label class="btn btn-outline-secondary" for="dow-{{ idx }}">{{ dow_labels[idx] }}</label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small mb-1">Hour from</label>
+            <select name="hour_from" class="form-select form-select-sm">
+                <option value="">—</option>
+                {% for h in 0..23 %}
+                    <option value="{{ h }}" {{ filters.hourFrom == h ? 'selected' : '' }}>{{ '%02d:00'|format(h) }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small mb-1">Hour to</label>
+            <select name="hour_to" class="form-select form-select-sm">
+                <option value="">—</option>
+                {% for h in 0..23 %}
+                    <option value="{{ h }}" {{ filters.hourTo == h ? 'selected' : '' }}>{{ '%02d:00'|format(h) }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </div>
 </form>

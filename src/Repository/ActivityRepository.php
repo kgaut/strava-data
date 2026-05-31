@@ -66,6 +66,9 @@ class ActivityRepository extends ServiceEntityRepository
      *     sport_type?: string|null,
      *     from?: \DateTimeImmutable|null,
      *     to?: \DateTimeImmutable|null,
+     *     days_of_week?: list<int>,
+     *     hour_from?: int|null,
+     *     hour_to?: int|null,
      * } $filters
      */
     public function applyFilters(\Doctrine\ORM\QueryBuilder $qb, array $filters): \Doctrine\ORM\QueryBuilder
@@ -89,6 +92,30 @@ class ActivityRepository extends ServiceEntityRepository
         if (!empty($filters['to'])) {
             $qb->andWhere('a.startDateLocal <= :to')
                 ->setParameter('to', $filters['to']);
+        }
+        if (!empty($filters['days_of_week']) && is_array($filters['days_of_week'])) {
+            $qb->andWhere('EXTRACT(DOW FROM a.startDateLocal) IN (:dow)')
+                ->setParameter('dow', $filters['days_of_week']);
+        }
+        $hourFrom = $filters['hour_from'] ?? null;
+        $hourTo = $filters['hour_to'] ?? null;
+        if (null !== $hourFrom && null !== $hourTo) {
+            if ($hourFrom <= $hourTo) {
+                $qb->andWhere('EXTRACT(HOUR FROM a.startDateLocal) BETWEEN :hour_from AND :hour_to')
+                    ->setParameter('hour_from', $hourFrom)
+                    ->setParameter('hour_to', $hourTo);
+            } else {
+                // Wrap-around range (e.g. 22h → 6h covers late night + early morning).
+                $qb->andWhere('EXTRACT(HOUR FROM a.startDateLocal) >= :hour_from OR EXTRACT(HOUR FROM a.startDateLocal) <= :hour_to')
+                    ->setParameter('hour_from', $hourFrom)
+                    ->setParameter('hour_to', $hourTo);
+            }
+        } elseif (null !== $hourFrom) {
+            $qb->andWhere('EXTRACT(HOUR FROM a.startDateLocal) >= :hour_from')
+                ->setParameter('hour_from', $hourFrom);
+        } elseif (null !== $hourTo) {
+            $qb->andWhere('EXTRACT(HOUR FROM a.startDateLocal) <= :hour_to')
+                ->setParameter('hour_to', $hourTo);
         }
 
         return $qb;
