@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Distributions — Strava Data{% endblock %}
+
+{% block body %}
+    <h1 class="h3 mb-3">Distributions</h1>
+    <p class="text-body-secondary small">Histograms across all filtered activities. Combine with a sport-type filter for sharper buckets.</p>
+
+    {{ include('dashboard/_filters.html.twig') }}
+
+    <div class="row g-3">
+        <div class="col-md-12">
+            <div class="card"><div class="card-body">
+                <h2 class="h6">Distance per activity</h2>
+                <canvas id="chart-distance" height="80"></canvas>
+            </div></div>
+        </div>
+        <div class="col-md-12">
+            <div class="card"><div class="card-body">
+                <h2 class="h6">Average speed</h2>
+                <canvas id="chart-speed" height="80"></canvas>
+            </div></div>
+        </div>
+        <div class="col-md-12">
+            <div class="card"><div class="card-body">
+                <h2 class="h6">Elevation gain per activity</h2>
+                <canvas id="chart-elevation" height="80"></canvas>
+            </div></div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+    const distance = {{ distance|json_encode|raw }};
+    const speed = {{ speed|json_encode|raw }};
+    const elevation = {{ elevation|json_encode|raw }};
+
+    function render(canvasId, data, color) {
+        if (!data.length) { return; }
+        new Chart(document.getElementById(canvasId), {
+            type: 'bar',
+            data: {
+                labels: data.map(r => r.label),
+                datasets: [{label: 'count', data: data.map(r => r.count), backgroundColor: color}],
+            },
+            options: {responsive: true, plugins: {legend: {display: false}}},
+        });
+    }
+    render('chart-distance', distance, '#fc4c02');
+    render('chart-speed', speed, '#0d6efd');
+    render('chart-elevation', elevation, '#198754');
+</script>
+{% endblock %}
