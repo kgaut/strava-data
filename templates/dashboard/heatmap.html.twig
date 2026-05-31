@@ -1,0 +1,85 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Calendar heatmap — Strava Data{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .heatmap { display: grid; grid-template-columns: repeat(53, 14px); grid-template-rows: repeat(7, 14px); gap: 2px; }
+    .heatmap rect { stroke: var(--bs-body-bg); stroke-width: 1; }
+    .heatmap-legend { display: inline-flex; align-items: center; gap: 4px; font-size: .75rem; color: var(--bs-secondary-color); }
+    .heatmap-legend-cell { width: 12px; height: 12px; display: inline-block; border-radius: 2px; }
+</style>
+{% endblock %}
+
+{% block body %}
+    <h1 class="h3 mb-3">Calendar heatmap</h1>
+
+    {{ include('dashboard/_filters.html.twig') }}
+
+    <div class="row g-3 mb-3">
+        <div class="col-md-4">
+            <div class="card"><div class="card-body">
+                <div class="text-body-secondary small">Active days (lifetime)</div>
+                <div class="fs-3">{{ streaks.total_active|number_format(0, '.', ' ') }}</div>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body">
+                <div class="text-body-secondary small">Longest streak</div>
+                <div class="fs-3">{{ streaks.longest }} <small class="text-body-secondary fs-6">days</small></div>
+            </div></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card"><div class="card-body">
+                <div class="text-body-secondary small">Current streak</div>
+                <div class="fs-3">{{ streaks.current }} <small class="text-body-secondary fs-6">days</small></div>
+            </div></div>
+        </div>
+    </div>
+
+    <div class="card"><div class="card-body">
+        <div class="d-flex justify-content-between align-items-baseline mb-2">
+            <h2 class="h6 mb-0">{{ year }}</h2>
+            <div class="heatmap-legend">
+                <span>Less</span>
+                <span class="heatmap-legend-cell" style="background:#ebedf0"></span>
+                <span class="heatmap-legend-cell" style="background:#fde6d3"></span>
+                <span class="heatmap-legend-cell" style="background:#fcb37e"></span>
+                <span class="heatmap-legend-cell" style="background:#fc7c2c"></span>
+                <span class="heatmap-legend-cell" style="background:#c83f01"></span>
+                <span>More</span>
+            </div>
+        </div>
+
+        {% set start = (year ~ '-01-01')|date_modify('-' ~ ((year ~ '-01-01')|date('w')) ~ ' day') %}
+        {% set end = (year ~ '-12-31') %}
+        {% set width = 53 * 16 %}
+        <svg viewBox="0 0 {{ width }} 112" width="100%" height="120">
+            {% set cursor = start|date('Y-m-d') %}
+            {% set week = 0 %}
+            {% for offset in 0..370 %}
+                {% set day = start|date_modify('+' ~ offset ~ ' day') %}
+                {% if day|date('Y') <= year %}
+                    {% set dow = day|date('w') %}
+                    {% set key = day|date('Y-m-d') %}
+                    {% set vol = daily[key] is defined ? daily[key].distance_m / 1000 : 0 %}
+                    {% set level = 0 %}
+                    {% if vol > 0 and max_km > 0 %}
+                        {% set ratio = vol / max_km %}
+                        {% if ratio < 0.1 %}{% set level = 1 %}
+                        {% elseif ratio < 0.3 %}{% set level = 2 %}
+                        {% elseif ratio < 0.6 %}{% set level = 3 %}
+                        {% else %}{% set level = 4 %}{% endif %}
+                    {% endif %}
+                    {% set color = ['#ebedf0', '#fde6d3', '#fcb37e', '#fc7c2c', '#c83f01'][level] %}
+                    {% set fade = day|date('Y') != year ? 'opacity:.2;' : '' %}
+                    <rect x="{{ week * 16 }}" y="{{ dow * 16 }}" width="14" height="14" rx="2"
+                          fill="{{ color }}" style="{{ fade }}">
+                        <title>{{ day|date('Y-m-d') }} — {{ daily[key] is defined ? '%.1f km, %d activity'|format(vol, daily[key].count) : 'no activity' }}</title>
+                    </rect>
+                {% endif %}
+                {% if day|date('w') == 6 %}{% set week = week + 1 %}{% endif %}
+            {% endfor %}
+        </svg>
+    </div></div>
+{% endblock %}
