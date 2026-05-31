@@ -13,12 +13,16 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+# Opt into Node.js 24 for JS-based actions ahead of the September 2026 forced switch.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   docker:
     name: Build & push Docker image
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
