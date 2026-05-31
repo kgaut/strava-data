@@ -62,11 +62,11 @@ class Matcher
         /** @var Connection $conn */
         $conn = $this->em->getConnection();
         $activities = $conn->fetchAllAssociative(<<<'SQL'
-            SELECT id, summary_polyline, start_date
-            FROM activity
-            WHERE summary_polyline IS NOT NULL AND summary_polyline <> ''
-            ORDER BY start_date ASC
-        SQL);
+                SELECT id, summary_polyline, start_date
+                FROM activity
+                WHERE summary_polyline IS NOT NULL AND summary_polyline <> ''
+                ORDER BY start_date ASC
+            SQL);
 
         $total = count($activities);
         $i = 0;
@@ -103,19 +103,19 @@ class Matcher
     private function upsertVisitsByLine(string $activityId, \DateTimeImmutable $startedAt, string $lineWkt): int
     {
         $sql = <<<SQL
-            WITH candidates AS (
-                SELECT r.id AS road_segment_id
-                FROM road_segment r
-                WHERE ST_DWithin(r.geometry, ST_GeomFromText(:wkt, 4326)::geography, :buffer)
-            )
-            INSERT INTO road_visit (road_segment_id, first_activity_id, first_visited_at)
-            SELECT c.road_segment_id, :activity_id, :started_at
-            FROM candidates c
-            ON CONFLICT (road_segment_id) DO UPDATE SET
-                first_activity_id = EXCLUDED.first_activity_id,
-                first_visited_at = EXCLUDED.first_visited_at
-            WHERE EXCLUDED.first_visited_at < road_visit.first_visited_at
-        SQL;
+                WITH candidates AS (
+                    SELECT r.id AS road_segment_id
+                    FROM road_segment r
+                    WHERE ST_DWithin(r.geometry, ST_GeomFromText(:wkt, 4326)::geography, :buffer)
+                )
+                INSERT INTO road_visit (road_segment_id, first_activity_id, first_visited_at)
+                SELECT c.road_segment_id, :activity_id, :started_at
+                FROM candidates c
+                ON CONFLICT (road_segment_id) DO UPDATE SET
+                    first_activity_id = EXCLUDED.first_activity_id,
+                    first_visited_at = EXCLUDED.first_visited_at
+                WHERE EXCLUDED.first_visited_at < road_visit.first_visited_at
+            SQL;
 
         $affected = (int) $this->em->getConnection()->executeStatement($sql, [
             'wkt' => $lineWkt,

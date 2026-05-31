@@ -296,16 +296,16 @@ class ActivityRepository extends ServiceEntityRepository
     public function cumulativeByYear(Athlete $athlete): array
     {
         $sql = <<<'SQL'
-            SELECT EXTRACT(YEAR FROM start_date_local)::int AS year,
-                   EXTRACT(DOY FROM start_date_local)::int AS day,
-                   SUM(distance / 1000.0) OVER (
-                       PARTITION BY EXTRACT(YEAR FROM start_date_local)
-                       ORDER BY start_date_local
-                   ) AS cumulative
-            FROM activity
-            WHERE athlete_id = :athlete_id
-            ORDER BY year, day
-        SQL;
+                SELECT EXTRACT(YEAR FROM start_date_local)::int AS year,
+                       EXTRACT(DOY FROM start_date_local)::int AS day,
+                       SUM(distance / 1000.0) OVER (
+                           PARTITION BY EXTRACT(YEAR FROM start_date_local)
+                           ORDER BY start_date_local
+                       ) AS cumulative
+                FROM activity
+                WHERE athlete_id = :athlete_id
+                ORDER BY year, day
+            SQL;
 
         $conn = $this->getEntityManager()->getConnection();
         $rows = $conn->fetchAllAssociative($sql, ['athlete_id' => $athlete->getId()]);

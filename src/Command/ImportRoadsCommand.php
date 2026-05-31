@@ -48,7 +48,7 @@ final class ImportRoadsCommand extends Command
         $progressBar = $io->createProgressBar();
         $count = $this->importer->importByDepartment(
             $rel,
-            function (string $label, int $i, int $total) use ($progressBar) {
+            static function (string $label, int $i, int $total) use ($progressBar) {
                 $progressBar->setMaxSteps($total);
                 $progressBar->setProgress($i);
             },

@@ -33,11 +33,11 @@ class RoadVisitRepository extends ServiceEntityRepository
     public function newKilometersForActivity(Activity $activity): float
     {
         $sql = <<<'SQL'
-            SELECT COALESCE(SUM(r.length_m), 0) AS m
-            FROM road_visit v
-            JOIN road_segment r ON r.id = v.road_segment_id
-            WHERE v.first_activity_id = :activity_id
-        SQL;
+                SELECT COALESCE(SUM(r.length_m), 0) AS m
+                FROM road_visit v
+                JOIN road_segment r ON r.id = v.road_segment_id
+                WHERE v.first_activity_id = :activity_id
+            SQL;
 
         $row = $this->getEntityManager()->getConnection()->fetchAssociative($sql, [
             'activity_id' => $activity->getId(),

@@ -46,18 +46,18 @@ class RoadSegmentRepository extends ServiceEntityRepository
         $column = AdminArea::LEVEL_DEPARTMENT === $adminLevel ? 'department_id' : 'commune_id';
 
         $sql = <<<SQL
-            SELECT a.id AS area_id,
-                   a.name AS area_name,
-                   a.code AS code,
-                   COALESCE(SUM(r.length_m), 0) AS total_m,
-                   COALESCE(SUM(CASE WHEN v.road_segment_id IS NOT NULL THEN r.length_m ELSE 0 END), 0) AS visited_m
-            FROM admin_area a
-            LEFT JOIN road_segment r ON r.$column = a.id
-            LEFT JOIN road_visit v ON v.road_segment_id = r.id
-            WHERE a.admin_level = :level
-            GROUP BY a.id, a.name, a.code
-            ORDER BY visited_m DESC, area_name ASC
-        SQL;
+                SELECT a.id AS area_id,
+                       a.name AS area_name,
+                       a.code AS code,
+                       COALESCE(SUM(r.length_m), 0) AS total_m,
+                       COALESCE(SUM(CASE WHEN v.road_segment_id IS NOT NULL THEN r.length_m ELSE 0 END), 0) AS visited_m
+                FROM admin_area a
+                LEFT JOIN road_segment r ON r.$column = a.id
+                LEFT JOIN road_visit v ON v.road_segment_id = r.id
+                WHERE a.admin_level = :level
+                GROUP BY a.id, a.name, a.code
+                ORDER BY visited_m DESC, area_name ASC
+            SQL;
 
         $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, ['level' => $adminLevel]);
 
@@ -87,15 +87,15 @@ class RoadSegmentRepository extends ServiceEntityRepository
     public function findGeoJsonInBbox(float $minLat, float $minLng, float $maxLat, float $maxLng): array
     {
         $sql = <<<'SQL'
-            SELECT r.id,
-                   r.highway,
-                   r.name,
-                   v.road_segment_id IS NOT NULL AS visited,
-                   ST_AsGeoJSON(ST_Simplify(r.geometry::geometry, 0.00005)) AS geometry
-            FROM road_segment r
-            LEFT JOIN road_visit v ON v.road_segment_id = r.id
-            WHERE r.geometry && ST_MakeEnvelope(:min_lng, :min_lat, :max_lng, :max_lat, 4326)::geography
-        SQL;
+                SELECT r.id,
+                       r.highway,
+                       r.name,
+                       v.road_segment_id IS NOT NULL AS visited,
+                       ST_AsGeoJSON(ST_Simplify(r.geometry::geometry, 0.00005)) AS geometry
+                FROM road_segment r
+                LEFT JOIN road_visit v ON v.road_segment_id = r.id
+                WHERE r.geometry && ST_MakeEnvelope(:min_lng, :min_lat, :max_lng, :max_lat, 4326)::geography
+            SQL;
 
         $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative($sql, [
             'min_lat' => $minLat,
@@ -126,11 +126,11 @@ class RoadSegmentRepository extends ServiceEntityRepository
     public function globalCoverage(): array
     {
         $sql = <<<'SQL'
-            SELECT COALESCE(SUM(r.length_m), 0) AS total_m,
-                   COALESCE(SUM(CASE WHEN v.road_segment_id IS NOT NULL THEN r.length_m ELSE 0 END), 0) AS visited_m
-            FROM road_segment r
-            LEFT JOIN road_visit v ON v.road_segment_id = r.id
-        SQL;
+                SELECT COALESCE(SUM(r.length_m), 0) AS total_m,
+                       COALESCE(SUM(CASE WHEN v.road_segment_id IS NOT NULL THEN r.length_m ELSE 0 END), 0) AS visited_m
+                FROM road_segment r
+                LEFT JOIN road_visit v ON v.road_segment_id = r.id
+            SQL;
 
         $row = $this->getEntityManager()->getConnection()->fetchAssociative($sql);
         $total = (float) ($row['total_m'] ?? 0);

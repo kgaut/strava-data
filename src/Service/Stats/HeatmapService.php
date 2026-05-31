@@ -26,10 +26,10 @@ class HeatmapService
     {
         $qb = $this->activityRepository->createQueryBuilder('a')
             ->select(
-                "DATE(a.startDateLocal) AS day,
+                'DATE(a.startDateLocal) AS day,
                  COUNT(a.id) AS count,
                  COALESCE(SUM(a.distance), 0) AS distance,
-                 COALESCE(SUM(a.movingTime), 0) AS moving"
+                 COALESCE(SUM(a.movingTime), 0) AS moving'
             )
             ->where('a.athlete = :athlete')
             ->setParameter('athlete', $athlete)

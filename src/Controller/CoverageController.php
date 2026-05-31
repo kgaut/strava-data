@@ -117,16 +117,16 @@ final class CoverageController extends AbstractController
         }
 
         $sql = <<<'SQL'
-            SELECT r.id,
-                   r.name,
-                   r.highway,
-                   ST_AsGeoJSON(ST_Simplify(r.geometry::geometry, 0.00005)) AS geometry,
-                   v.first_activity_id = :activity_id AS first_here,
-                   v.road_segment_id IS NOT NULL AS visited
-            FROM road_segment r
-            LEFT JOIN road_visit v ON v.road_segment_id = r.id
-            WHERE r.geometry && ST_MakeEnvelope(:min_lng, :min_lat, :max_lng, :max_lat, 4326)::geography
-        SQL;
+                SELECT r.id,
+                       r.name,
+                       r.highway,
+                       ST_AsGeoJSON(ST_Simplify(r.geometry::geometry, 0.00005)) AS geometry,
+                       v.first_activity_id = :activity_id AS first_here,
+                       v.road_segment_id IS NOT NULL AS visited
+                FROM road_segment r
+                LEFT JOIN road_visit v ON v.road_segment_id = r.id
+                WHERE r.geometry && ST_MakeEnvelope(:min_lng, :min_lat, :max_lng, :max_lat, 4326)::geography
+            SQL;
 
         $rows = $this->connection->fetchAllAssociative($sql, [
             'activity_id' => $activity->getId(),

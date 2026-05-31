@@ -38,10 +38,10 @@ class RoadImporter
         $areaId = 3_600_000_000 + $departmentRelationId;
         $highways = implode('|', self::ROAD_HIGHWAY_VALUES);
         $ql = <<<QL
-            [out:json][timeout:300];
-            way["highway"~"^($highways)$"](area:$areaId);
-            out tags geom;
-        QL;
+                [out:json][timeout:300];
+                way["highway"~"^($highways)$"](area:$areaId);
+                out tags geom;
+            QL;
 
         $this->logger->info('Fetching road ways from Overpass', ['area' => $areaId]);
         $elements = $this->overpass->query($ql, 360);
@@ -109,21 +109,21 @@ class RoadImporter
             foreach ($batch as $row) {
                 $conn->executeStatement(
                     <<<'SQL'
-                        INSERT INTO road_segment (id, highway, name, surface, geometry, length_m, imported_at)
-                        VALUES (
-                            :id, :highway, :name, :surface,
-                            ST_GeomFromText(:wkt, 4326)::geography,
-                            ST_Length(ST_GeomFromText(:wkt, 4326)::geography),
-                            NOW()
-                        )
-                        ON CONFLICT (id) DO UPDATE SET
-                            highway = EXCLUDED.highway,
-                            name = EXCLUDED.name,
-                            surface = EXCLUDED.surface,
-                            geometry = EXCLUDED.geometry,
-                            length_m = EXCLUDED.length_m,
-                            imported_at = NOW()
-                    SQL,
+                            INSERT INTO road_segment (id, highway, name, surface, geometry, length_m, imported_at)
+                            VALUES (
+                                :id, :highway, :name, :surface,
+                                ST_GeomFromText(:wkt, 4326)::geography,
+                                ST_Length(ST_GeomFromText(:wkt, 4326)::geography),
+                                NOW()
+                            )
+                            ON CONFLICT (id) DO UPDATE SET
+                                highway = EXCLUDED.highway,
+                                name = EXCLUDED.name,
+                                surface = EXCLUDED.surface,
+                                geometry = EXCLUDED.geometry,
+                                length_m = EXCLUDED.length_m,
+                                imported_at = NOW()
+                        SQL,
                     $row,
                 );
             }
@@ -143,29 +143,29 @@ class RoadImporter
         $conn = $this->em->getConnection();
         $conn->executeStatement(
             <<<SQL
-                UPDATE road_segment r
-                SET commune_id = sub.area_id
-                FROM (
-                    SELECT r2.id AS seg_id, a.id AS area_id
-                    FROM road_segment r2
-                    JOIN admin_area a ON a.admin_level = :commune AND ST_Intersects(a.geometry, r2.geometry)
-                ) sub
-                WHERE r.id = sub.seg_id
-            SQL,
+                    UPDATE road_segment r
+                    SET commune_id = sub.area_id
+                    FROM (
+                        SELECT r2.id AS seg_id, a.id AS area_id
+                        FROM road_segment r2
+                        JOIN admin_area a ON a.admin_level = :commune AND ST_Intersects(a.geometry, r2.geometry)
+                    ) sub
+                    WHERE r.id = sub.seg_id
+                SQL,
             ['commune' => \App\Entity\AdminArea::LEVEL_COMMUNE],
         );
 
         $conn->executeStatement(
             <<<SQL
-                UPDATE road_segment r
-                SET department_id = sub.area_id
-                FROM (
-                    SELECT r2.id AS seg_id, a.id AS area_id
-                    FROM road_segment r2
-                    JOIN admin_area a ON a.admin_level = :department AND ST_Intersects(a.geometry, r2.geometry)
-                ) sub
-                WHERE r.id = sub.seg_id
-            SQL,
+                    UPDATE road_segment r
+                    SET department_id = sub.area_id
+                    FROM (
+                        SELECT r2.id AS seg_id, a.id AS area_id
+                        FROM road_segment r2
+                        JOIN admin_area a ON a.admin_level = :department AND ST_Intersects(a.geometry, r2.geometry)
+                    ) sub
+                    WHERE r.id = sub.seg_id
+                SQL,
             ['department' => \App\Entity\AdminArea::LEVEL_DEPARTMENT],
         );
     }

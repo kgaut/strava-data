@@ -27,7 +27,7 @@ class AdminAreaImporter
     }
 
     /**
-     * @param callable|null $progress Optional (label, current, total) progress callback.
+     * @param callable|null $progress optional (label, current, total) progress callback
      */
     public function importDepartmentAndCommunes(int $departmentRelationId, ?callable $progress = null): int
     {
@@ -55,10 +55,10 @@ class AdminAreaImporter
         //    Overpass area id for a relation = 3_600_000_000 + relation_id.
         $areaId = 3_600_000_000 + $departmentRelationId;
         $ql = <<<QL
-            [out:json][timeout:120];
-            relation["boundary"="administrative"]["admin_level"="8"](area:$areaId);
-            out tags;
-        QL;
+                [out:json][timeout:120];
+                relation["boundary"="administrative"]["admin_level"="8"](area:$areaId);
+                out tags;
+            QL;
         $elements = $this->overpass->query($ql);
         $this->logger->info('Discovered communes', ['count' => count($elements)]);
 
@@ -110,14 +110,14 @@ class AdminAreaImporter
     private function upsert(string $id, int $level, string $name, string $multiPolygonWkt, ?string $code): void
     {
         $sql = <<<'SQL'
-            INSERT INTO admin_area (id, admin_level, name, code, geometry, imported_at)
-            VALUES (:id, :level, :name, :code, ST_GeomFromText(:wkt, 4326)::geography, NOW())
-            ON CONFLICT (id) DO UPDATE SET
-                name = EXCLUDED.name,
-                code = EXCLUDED.code,
-                geometry = EXCLUDED.geometry,
-                imported_at = NOW()
-        SQL;
+                INSERT INTO admin_area (id, admin_level, name, code, geometry, imported_at)
+                VALUES (:id, :level, :name, :code, ST_GeomFromText(:wkt, 4326)::geography, NOW())
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    code = EXCLUDED.code,
+                    geometry = EXCLUDED.geometry,
+                    imported_at = NOW()
+            SQL;
 
         $this->em->getConnection()->executeStatement($sql, [
             'id' => $id,

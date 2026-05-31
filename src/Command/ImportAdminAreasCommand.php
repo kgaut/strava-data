@@ -50,7 +50,7 @@ final class ImportAdminAreasCommand extends Command
 
         $count = $this->importer->importDepartmentAndCommunes(
             $rel,
-            function (string $label, int $i, int $total) use ($progressBar) {
+            static function (string $label, int $i, int $total) use ($progressBar) {
                 $progressBar->setMaxSteps($total);
                 $progressBar->setProgress($i);
                 $progressBar->setMessage($label);

@@ -61,7 +61,7 @@ final class MatchRoadsCommand extends Command
         $io->title('Matching every activity against road segments');
         $progressBar = $io->createProgressBar();
         $count = $this->matcher->matchAll(
-            function (int $i, int $total) use ($progressBar) {
+            static function (int $i, int $total) use ($progressBar) {
                 $progressBar->setMaxSteps($total);
                 $progressBar->setProgress($i);
             },
