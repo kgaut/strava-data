@@ -287,6 +287,42 @@ class ActivityRepository extends ServiceEntityRepository
     }
 
     /**
+     * Cumulative distance (in km) per day of the year, grouped by year.
+     * Output is keyed by year, each value is a list of {day_of_year, cumulative_km}
+     * points already running-summed in SQL.
+     *
+     * @return array<int, list<array{day: int, cumulative_km: float}>>
+     */
+    public function cumulativeByYear(Athlete $athlete): array
+    {
+        $sql = <<<'SQL'
+            SELECT EXTRACT(YEAR FROM start_date_local)::int AS year,
+                   EXTRACT(DOY FROM start_date_local)::int AS day,
+                   SUM(distance / 1000.0) OVER (
+                       PARTITION BY EXTRACT(YEAR FROM start_date_local)
+                       ORDER BY start_date_local
+                   ) AS cumulative
+            FROM activity
+            WHERE athlete_id = :athlete_id
+            ORDER BY year, day
+        SQL;
+
+        $conn = $this->getEntityManager()->getConnection();
+        $rows = $conn->fetchAllAssociative($sql, ['athlete_id' => $athlete->getId()]);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $year = (int) $row['year'];
+            $out[$year][] = [
+                'day' => (int) $row['day'],
+                'cumulative_km' => (float) $row['cumulative'],
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * Lightweight projection used by the interactive map viewer: only the
      * fields needed to draw a polyline + popup, never the full entity.
      *

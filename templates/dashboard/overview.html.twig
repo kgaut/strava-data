@@ -72,6 +72,11 @@
         <h2 class="h6">Monthly distance (km)</h2>
         <canvas id="chart-months" height="80"></canvas>
     </div></div>
+
+    <div class="card mt-3"><div class="card-body">
+        <h2 class="h6">Cumulative distance — year over year</h2>
+        <canvas id="chart-cumulative" height="80"></canvas>
+    </div></div>
 {% endblock %}
 
 {% block javascripts %}
@@ -119,5 +124,50 @@
         },
         options: {responsive: true, plugins: {legend: {display: false}}}
     });
+
+    const cumulative = {{ cumulative_by_year|json_encode|raw }};
+    const cumulativeYears = Object.keys(cumulative).sort();
+    if (cumulativeYears.length > 0) {
+        // Build a 1..366 axis and project each year onto it. Carry the last cumulative value forward
+        // so the line is monotone between activity days.
+        const days = Array.from({length: 366}, (_, i) => i + 1);
+        const palette = ['#fc4c02', '#0d6efd', '#198754', '#6f42c1', '#dc3545', '#fd7e14', '#20c997', '#6610f2'];
+        const datasets = cumulativeYears.map((year, idx) => {
+            const points = cumulative[year];
+            const series = new Array(366).fill(null);
+            let last = 0;
+            let pi = 0;
+            for (let d = 0; d < 366; d++) {
+                while (pi < points.length && points[pi].day <= d + 1) {
+                    last = points[pi].cumulative_km;
+                    pi++;
+                }
+                series[d] = last > 0 ? +last.toFixed(1) : null;
+            }
+            const isCurrent = +year === new Date().getFullYear();
+            return {
+                label: year,
+                data: series,
+                borderColor: palette[idx % palette.length],
+                backgroundColor: palette[idx % palette.length],
+                fill: false,
+                borderWidth: isCurrent ? 2.5 : 1.5,
+                pointRadius: 0,
+                tension: 0.05,
+            };
+        });
+        new Chart(document.getElementById('chart-cumulative'), {
+            type: 'line',
+            data: {labels: days, datasets},
+            options: {
+                responsive: true,
+                interaction: {mode: 'index', intersect: false},
+                scales: {
+                    x: {ticks: {callback: (v) => v % 30 === 0 ? `D${v}` : ''}},
+                    y: {title: {display: true, text: 'cumulative km'}},
+                },
+            },
+        });
+    }
 </script>
 {% endblock %}
