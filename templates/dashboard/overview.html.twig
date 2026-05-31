@@ -77,6 +77,21 @@
         <h2 class="h6">Cumulative distance — year over year</h2>
         <canvas id="chart-cumulative" height="80"></canvas>
     </div></div>
+
+    {% if coverage.total_m > 0 %}
+        <a class="card mt-3 text-decoration-none text-reset" href="{{ path('app_coverage') }}">
+            <div class="card-body">
+                <h2 class="h6 mb-2">Coverage in imported region</h2>
+                <div class="d-flex align-items-center gap-3">
+                    <div class="fs-3 fw-semibold text-warning">{{ coverage.pct|number_format(2) }}%</div>
+                    <div class="text-body-secondary">
+                        {{ (coverage.visited_m / 1000)|number_format(1, '.', ' ') }} km /
+                        {{ (coverage.total_m / 1000)|number_format(0, '.', ' ') }} km · click to explore
+                    </div>
+                </div>
+            </div>
+        </a>
+    {% endif %}
 {% endblock %}
 
 {% block javascripts %}

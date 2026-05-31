@@ -1,0 +1,121 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Coverage — Strava Data{% endblock %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+    .coverage-layout { display: grid; grid-template-columns: minmax(360px, 1fr) 2fr; gap: 1rem; height: calc(100vh - 200px); min-height: 600px; }
+    .coverage-sidebar { overflow-y: auto; }
+    #coverage-map { height: 100%; border-radius: 8px; }
+    .coverage-bar { position: relative; height: 6px; border-radius: 3px; background: #ebedf0; overflow: hidden; }
+    .coverage-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: #fc4c02; }
+</style>
+{% endblock %}
+
+{% block body %}
+    <div class="d-flex justify-content-between align-items-baseline mb-2">
+        <h1 class="h3 mb-0">Coverage</h1>
+        <div class="text-body-secondary small">
+            <strong>{{ (global.visited_m / 1000)|number_format(1, '.', ' ') }} km</strong>
+            / {{ (global.total_m / 1000)|number_format(0, '.', ' ') }} km
+            ({{ global.pct|number_format(2) }}%) covered
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <div class="btn-group btn-group-sm" role="group">
+            <a class="btn btn-{{ level == 8 ? 'primary' : 'outline-primary' }}" href="{{ path('app_coverage', {level: 8}) }}">Communes</a>
+            <a class="btn btn-{{ level == 6 ? 'primary' : 'outline-primary' }}" href="{{ path('app_coverage', {level: 6}) }}">Departments</a>
+        </div>
+    </div>
+
+    <div class="coverage-layout">
+        <div class="coverage-sidebar card">
+            <div class="card-body p-2">
+                <input id="area-filter" class="form-control form-control-sm mb-2" placeholder="Filter by name…">
+                <table class="table table-sm mb-0" id="area-table">
+                    <thead>
+                        <tr>
+                            <th>Area</th>
+                            <th class="text-end">km</th>
+                            <th class="text-end">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for area in areas %}
+                            <tr data-name="{{ area.area_name|lower }}" data-id="{{ area.area_id }}">
+                                <td>
+                                    <div>{{ area.area_name }}{% if area.code %} <small class="text-body-secondary">{{ area.code }}</small>{% endif %}</div>
+                                    <div class="coverage-bar mt-1"><div class="coverage-bar-fill" style="width: {{ area.pct|number_format(2) }}%"></div></div>
+                                </td>
+                                <td class="text-end small">
+                                    {{ (area.visited_m / 1000)|number_format(1, '.', ' ') }}<br>
+                                    <span class="text-body-secondary">/ {{ (area.total_m / 1000)|number_format(0, '.', ' ') }}</span>
+                                </td>
+                                <td class="text-end fw-semibold">{{ area.pct|number_format(1) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div id="coverage-map"></div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+    const map = L.map('coverage-map', {preferCanvas: true}).setView([46.6, 2.5], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors', maxZoom: 19,
+    }).addTo(map);
+
+    const layer = L.geoJSON(null, {
+        style: f => ({
+            color: f.properties.visited ? '#fc4c02' : '#bbb',
+            weight: f.properties.visited ? 3 : 1.5,
+            opacity: f.properties.visited ? 0.85 : 0.45,
+        }),
+        onEachFeature: (f, l) => {
+            const label = f.properties.name || f.properties.highway;
+            l.bindTooltip(`${label}${f.properties.visited ? ' — visited' : ''}`, {sticky: true});
+        },
+    }).addTo(map);
+
+    let pending = null;
+    async function reload() {
+        const b = map.getBounds();
+        const url = `{{ path('app_coverage_geojson') }}?min_lat=${b.getSouth()}&min_lng=${b.getWest()}&max_lat=${b.getNorth()}&max_lng=${b.getEast()}`;
+        if (map.getZoom() < 11) {
+            layer.clearLayers();
+            return;
+        }
+        if (pending) { pending.abort(); }
+        pending = new AbortController();
+        try {
+            const res = await fetch(url, {signal: pending.signal, headers: {'Accept': 'application/json'}});
+            if (!res.ok) { return; }
+            const data = await res.json();
+            layer.clearLayers();
+            layer.addData(data);
+        } catch (e) {
+            if (e.name !== 'AbortError') { console.error(e); }
+        }
+    }
+
+    let debounce;
+    map.on('moveend', () => { clearTimeout(debounce); debounce = setTimeout(reload, 400); });
+
+    // Sidebar filter
+    document.getElementById('area-filter').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        for (const row of document.querySelectorAll('#area-table tbody tr')) {
+            row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+        }
+    });
+</script>
+{% endblock %}

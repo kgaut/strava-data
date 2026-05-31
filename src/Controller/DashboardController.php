@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Repository\ActivityRepository;
+use App\Repository\RoadSegmentRepository;
 use App\Service\Stats\Filters;
 use App\Service\Stats\StatsService;
 use App\Service\Strava\AthleteProvider;
@@ -19,6 +20,7 @@ final class DashboardController extends AbstractController
         private readonly StatsService $stats,
         private readonly AthleteProvider $athleteProvider,
         private readonly ActivityRepository $activityRepository,
+        private readonly RoadSegmentRepository $roadSegmentRepository,
     ) {
     }
 
@@ -43,6 +45,7 @@ final class DashboardController extends AbstractController
             'by_month' => $data['by_month'],
             'by_sport' => $data['by_sport'],
             'cumulative_by_year' => $this->activityRepository->cumulativeByYear($athlete),
+            'coverage' => $this->roadSegmentRepository->globalCoverage(),
         ]);
     }
 }

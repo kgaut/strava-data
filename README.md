@@ -9,6 +9,11 @@ stack on a home server.
 - Web dashboard with totals, year/month/sport breakdowns, and global filters
   (year, month, sport type, date range)
 - Interactive Leaflet map (`/map/live`) with all activity traces overlaid on OSM
+- **Wandrer-style coverage map (`/coverage`)**: imports OSM road / path data
+  for a chosen department, matches every Strava trace against the network, and
+  shows % covered per commune + per department, plus the "new ground" you broke
+  on each ride
+- Records / heatmap / distributions pages, with day-of-week + hour filters
 - PNG renderer (`/map` and CLI) that overlays all matching activity polylines,
   with two background modes: **OSM tiles** or **plain colour (no tiles)**
 - Filters for the PNG renderer: center + radius, date range, sport types,
@@ -86,6 +91,29 @@ cron sidecar keeps activities up to date afterwards.
 | `app:strava:full-sync` | Pull the entire activity history. |
 | `app:strava:sync` | Incremental sync since the latest known activity. |
 | `app:strava:map` | Render a PNG of matching traces. |
+| `app:roads:import-admin --osm-relation=<id>` | Import a department + its communes from OSM. |
+| `app:roads:import-roads --osm-relation=<id>` | Import every highway way in the department. |
+| `app:roads:match [--all\|--activity=<id>]` | Match activities against the road network. |
+
+## Coverage feature (Wandrer-style)
+
+To enable the `/coverage` page you need to import a slice of OSM data once.
+
+1. Find your department's **OSM relation id** on
+   <https://www.openstreetmap.org> — search the department name, then click
+   the "relation" entry. The URL ends in `/relation/<id>`.
+2. Run the imports (takes ~10-30 minutes for a typical French department):
+   ```bash
+   docker compose exec app php bin/console app:roads:import-admin --osm-relation=<id>
+   docker compose exec app php bin/console app:roads:import-roads --osm-relation=<id>
+   docker compose exec app php bin/console app:roads:match --all
+   ```
+   `import-admin` pulls polygons from Nominatim (throttled to 1 req/s),
+   `import-roads` pulls every highway way from Overpass, `match` walks all
+   your activities and records first-visits in `road_visit`. Subsequent
+   `app:strava:sync` runs match new activities automatically.
+3. Visit `http://localhost:8080/coverage` — sidebar lists communes /
+   departments by % covered, map highlights visited roads in orange.
 
 Example map renders:
 
