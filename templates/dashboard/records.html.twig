@@ -1,0 +1,67 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Records — Strava Data{% endblock %}
+
+{% macro format_value(value, format) %}
+    {%- if format == 'km' -%}
+        {{ (value / 1000)|number_format(2, '.', ' ') }}
+    {%- elseif format == 'time' -%}
+        {{ '%d:%02d:%02d'|format(value // 3600, (value // 60) % 60, value % 60) }}
+    {%- elseif format == 'kmh' -%}
+        {{ (value * 3.6)|number_format(2, '.', ' ') }}
+    {%- else -%}
+        {{ value|number_format(0, '.', ' ') }}
+    {%- endif -%}
+{% endmacro %}
+
+{% macro records_table(title, unit, rows, format) %}
+    {% import _self as macros %}
+    <div class="card h-100">
+        <div class="card-body">
+            <h2 class="h6">{{ title }}</h2>
+            {% if rows is empty %}
+                <p class="text-body-secondary small mb-0">No data.</p>
+            {% else %}
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Activity</th>
+                            <th>Sport</th>
+                            <th>Date</th>
+                            <th class="text-end">{{ unit }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in rows %}
+                            <tr>
+                                <td class="text-body-secondary">{{ loop.index }}</td>
+                                <td><a href="https://www.strava.com/activities/{{ row.id }}" target="_blank" rel="noopener">{{ row.name }}</a></td>
+                                <td>{{ row.sport_type }}</td>
+                                <td>{{ row.start_date|date('Y-m-d') }}</td>
+                                <td class="text-end">{{ macros.format_value(row.value, format) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    </div>
+{% endmacro %}
+
+{% block body %}
+    {% import _self as macros %}
+
+    <h1 class="h3 mb-3">Records</h1>
+    <p class="text-body-secondary small">Top 5 activities per metric. Filters apply across all panels.</p>
+
+    {{ include('dashboard/_filters.html.twig') }}
+
+    <div class="row g-3">
+        <div class="col-md-6">{{ macros.records_table('Longest distance', 'km', longest_distance, 'km') }}</div>
+        <div class="col-md-6">{{ macros.records_table('Longest moving time', 'h:mm:ss', longest_time, 'time') }}</div>
+        <div class="col-md-6">{{ macros.records_table('Highest elevation gain', 'm', highest_elevation, 'm') }}</div>
+        <div class="col-md-6">{{ macros.records_table('Fastest average speed (≥5 km)', 'km/h', fastest_avg_speed, 'kmh') }}</div>
+        <div class="col-md-6">{{ macros.records_table('Highest average heart rate', 'bpm', highest_avg_hr, 'bpm') }}</div>
+    </div>
+{% endblock %}
